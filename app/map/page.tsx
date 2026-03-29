@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-// Kitchener-Waterloo, Ontario coordinates
 const KW_CENTER: [number, number] = [-80.5449, 43.4643];
 
-export default function Home() {
+function MapContent() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState("");
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     let map: mapboxgl.Map | null = null;
 
     import("mapbox-gl").then((mapboxgl) => {
@@ -26,11 +26,13 @@ export default function Home() {
         container: mapRef.current,
         style: "mapbox://styles/mapbox/dark-v11",
         center: KW_CENTER,
-        zoom: 13.5,
-        pitch: 60,
-        bearing: -20,
+        zoom: 14,
+        pitch: 55,
+        bearing: 0,
         antialias: true,
       });
+
+      map.addControl(new mapboxgl.default.NavigationControl(), "bottom-right");
 
       map.on("load", () => {
         if (!map) return;
@@ -53,7 +55,6 @@ export default function Home() {
           },
         });
 
-        // 3D buildings — forest green to brick red tones
         map.addLayer(
           {
             id: "3d-buildings",
@@ -67,9 +68,9 @@ export default function Home() {
                 "interpolate",
                 ["linear"],
                 ["get", "height"],
-                0,  "#1a2e1a",
-                40, "#1f3320",
-                80, "#2d1a14",
+                0,   "#1a2e1a",
+                40,  "#1f3320",
+                80,  "#2d1a14",
                 150, "#3d2219",
               ],
               "fill-extrusion-height": [
@@ -85,57 +86,56 @@ export default function Home() {
           },
           "road-label"
         );
-
-        // Slow auto-rotate
-        let angle = -20;
-        const rotate = () => {
-          angle += 0.035;
-          map?.setBearing(angle);
-          requestAnimationFrame(rotate);
-        };
-        rotate();
       });
     });
 
     return () => { map?.remove(); };
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    router.push(`/map${query ? `?q=${encodeURIComponent(query)}` : ""}`);
-  };
-
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
-      {/* Mapbox background */}
       <div ref={mapRef} className="map-container" />
 
-      {/* Vignette overlay */}
-      <div className="home-vignette" />
+      {/* Top bar */}
+      <div className="map-topbar">
+        <span className="map-logo">City<span>Scapes</span></span>
 
-      {/* Centered hero content */}
-      <div className="home-overlay">
-        <h1 className="hero-title">CityScapes</h1>
-
-        <p className="hero-sub">
-          Visualize the future of your city.<br />
-          Powered by AI &amp; real-world urban data.
-        </p>
-
-        {/* Single search box with inline submit arrow */}
-        <form className="hero-search" onSubmit={handleSearch}>
+        <div className="map-search">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            style={{ color: "rgba(232,220,200,0.35)", flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
+          </svg>
           <input
             type="text"
-            placeholder="Enter your future view…"
+            placeholder="Search a location…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="off"
           />
-          <button type="submit" aria-label="Search">
-            →
-          </button>
-        </form>
+        </div>
+
+        <Link href="/" className="back-btn">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Home
+        </Link>
+      </div>
+
+      {/* Bottom location chip */}
+      <div className="map-chip">
+        <span className="map-chip-dot" />
+        Kitchener–Waterloo · 3D Urban View
       </div>
     </div>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={<div style={{ background: "#0f1f0f", width: "100vw", height: "100vh" }} />}>
+      <MapContent />
+    </Suspense>
   );
 }

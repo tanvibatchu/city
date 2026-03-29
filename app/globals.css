@@ -1,26 +1,263 @@
 @import "tailwindcss";
+@import "mapbox-gl/dist/mapbox-gl.css";
 
+/* ─── Design tokens ──────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --green-deep:   #0f1f0f;
+  --green-forest: #2d5a27;
+  --green-mid:    #3a6b34;
+  --red-brick:    #8b2e1a;
+  --red-warm:     #b03a22;
+  --cream:        #e8dcc8;
+  --cream-dim:    rgba(232, 220, 200, 0.55);
+  --overlay-bg:   rgba(10, 16, 10, 0.52);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Reset ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--green-deep);
+  /* Use system serif stack for the Agentropolis-esque look */
+  font-family: "Georgia", "Times New Roman", serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Map container ──────────────────────────────────── */
+.map-container {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Home vignette ──────────────────────────────────── */
+/* Dark radial vignette edges + a gentle dark centre wash */
+.home-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    /* strong bottom dark band  */
+    linear-gradient(to top,  rgba(10,16,10,0.72) 0%,  transparent 38%),
+    /* strong top dark band     */
+    linear-gradient(to bottom,rgba(10,16,10,0.55) 0%,  transparent 32%),
+    /* left & right edge fade   */
+    linear-gradient(to right, rgba(10,16,10,0.45) 0%,  transparent 22%),
+    linear-gradient(to left,  rgba(10,16,10,0.45) 0%,  transparent 22%),
+    /* subtle global tint for text legibility */
+    rgba(10,16,10,0.28);
+}
+
+/* ─── Home overlay ───────────────────────────────────── */
+.home-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 24px;
+  gap: 0;
+}
+
+/* ─── Hero title ─────────────────────────────────────── */
+.hero-title {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: clamp(4rem, 11vw, 9.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  /* Warm cream — no gradient, just solid */
+  color: var(--cream);
+  /* Subtle text shadow for depth against the map */
+  text-shadow:
+    0 2px 40px rgba(10, 16, 10, 0.8),
+    0 1px  4px rgba(10, 16, 10, 0.6);
+  margin-bottom: 22px;
+}
+
+/* ─── Hero subtitle ──────────────────────────────────── */
+.hero-sub {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: clamp(0.95rem, 2vw, 1.2rem);
+  line-height: 1.65;
+  color: var(--cream-dim);
+  max-width: 480px;
+  margin-bottom: 44px;
+  text-shadow: 0 1px 12px rgba(10,16,10,0.7);
+}
+
+/* ─── Hero search box ────────────────────────────────── */
+.hero-search {
+  display: flex;
+  align-items: center;
+  width: min(540px, calc(100vw - 48px));
+  /* Brick-red border, thin */
+  border: 1.5px solid var(--red-brick);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(10, 16, 10, 0.72);
+  backdrop-filter: blur(16px);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hero-search:focus-within {
+  border-color: var(--red-warm);
+  box-shadow: 0 0 0 3px rgba(139, 46, 26, 0.25);
+}
+
+.hero-search input {
+  flex: 1;
+  height: 56px;
+  padding: 0 22px;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1rem;
+  color: var(--cream);
+  background: transparent;
+  border: none;
+  outline: none;
+  letter-spacing: 0.01em;
+}
+
+.hero-search input::placeholder {
+  color: rgba(232, 220, 200, 0.38);
+}
+
+/* Arrow submit button */
+.hero-search button {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  background: var(--red-brick);
+  border: none;
+  border-left: 1.5px solid var(--red-brick);
+  color: var(--cream);
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.hero-search button:hover {
+  background: var(--red-warm);
+}
+
+/* ─── Map page ───────────────────────────────────────── */
+
+/* Top bar */
+.map-topbar {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  width: min(700px, calc(100vw - 40px));
+  background: rgba(10, 16, 10, 0.72);
+  border: 1px solid rgba(232, 220, 200, 0.12);
+  border-radius: 6px;
+  backdrop-filter: blur(20px);
+  z-index: 10;
+}
+
+.map-logo {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cream);
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.map-logo span {
+  color: var(--red-warm);
+}
+
+.map-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  gap: 9px;
+  background: rgba(232, 220, 200, 0.06);
+  border: 1px solid rgba(232, 220, 200, 0.12);
+  border-radius: 4px;
+}
+
+.map-search input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--cream);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.map-search input::placeholder {
+  color: rgba(232, 220, 200, 0.32);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: rgba(232, 220, 200, 0.07);
+  border: 1px solid rgba(232, 220, 200, 0.12);
+  color: rgba(232, 220, 200, 0.75);
+  font-size: 0.83rem;
+  font-weight: 500;
+  text-decoration: none;
+  font-family: "Georgia", "Times New Roman", serif;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.back-btn:hover {
+  background: rgba(139, 46, 26, 0.25);
+  color: var(--cream);
+  border-color: var(--red-brick);
+}
+
+/* Bottom info chip */
+.map-chip {
+  position: absolute;
+  bottom: 28px;
+  left: 20px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 16px;
+  border-radius: 4px;
+  background: rgba(10, 16, 10, 0.75);
+  border: 1px solid rgba(232, 220, 200, 0.1);
+  backdrop-filter: blur(14px);
+  color: rgba(232, 220, 200, 0.55);
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.map-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green-forest);
+  box-shadow: 0 0 8px var(--green-forest);
+  flex-shrink: 0;
 }
