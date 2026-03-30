@@ -2,9 +2,9 @@
   "name": "city-3",
   "private": true,
   "scripts": {
-    "dev": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix frontend",
-    "start": "npm run start --prefix frontend",
-    "lint": "npm run lint --prefix frontend"
+    "dev": "npm run dev --prefix UI-stuff",
+    "build": "npm run build --prefix UI-stuff",
+    "start": "npm run start --prefix UI-stuff",
+    "lint": "npm run lint --prefix UI-stuff"
   }
 }
