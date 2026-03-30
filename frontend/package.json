@@ -9,8 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@deck.gl/core": "^9.2.11",
+    "@deck.gl/mapbox": "^9.2.11",
+    "@deck.gl/mesh-layers": "^9.2.11",
+    "@luma.gl/core": "^9.2.6",
+    "@luma.gl/engine": "^9.2.6",
     "@types/mapbox-gl": "^3.4.1",
     "chart.js": "^4.5.1",
+    "deck.gl": "^9.2.11",
     "mapbox-gl": "^3.20.0",
     "next": "16.2.1",
     "react": "19.2.4",

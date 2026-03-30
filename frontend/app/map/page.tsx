@@ -149,7 +149,6 @@ async function geocode(q: string): Promise<[number, number] | null> {
 }
 
 // ─── Add 3D buildings ─────────────────────────────────────────────────────────
-// FIX: Mapbox Standard style has no "composite" source — add streets-v8 manually
 function add3DBuildings(map: MapboxMap) {
   const layers = map.getStyle().layers;
   const labelLayerId = layers.find(
@@ -206,6 +205,7 @@ function MapContent() {
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const hotspotMarkers = useRef<mapboxgl.Marker[]>([]);
+  const treeMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const centerRef = useRef<[number, number]>(KW_CENTER);
 
   const searchParams = useSearchParams();
@@ -224,15 +224,24 @@ function MapContent() {
   const weightsRef = useRef<SuitabilityWeights>(DEFAULT_WEIGHTS);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [weights, setWeights] = useState<SuitabilityWeights>(DEFAULT_WEIGHTS);
-  const [top, setTop] = useState<
-    Array<{ id: string; lat: number; lng: number; score: number }>
-  >([]);
+  const [top, setTop] = useState<Array<{ id: string; lat: number; lng: number; score: number }>>([]);
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
   const [greeneryPct, setGreeneryPct] = useState(30);
   const [predict, setPredict] = useState<PredictResponseV1 | null>(null);
   const [predictErr, setPredictErr] = useState<string | null>(null);
   const [loadingGrid, setLoadingGrid] = useState(true);
   const [loadingPredict, setLoadingPredict] = useState(false);
+
+  // ── Tree placement state ──────────────────────────────────────────────────
+  const [isPlacingTree, setIsPlacingTree] = useState(false);
+  const [trees, setTrees] = useState<Array<{ lng: number; lat: number }>>([]);
+  const isPlacingTreeRef = useRef(false);
+
+  useEffect(() => {
+    isPlacingTreeRef.current = isPlacingTree;
+    const canvas = mapInstanceRef.current?.getCanvas();
+    if (canvas) canvas.style.cursor = isPlacingTree ? "crosshair" : "";
+  }, [isPlacingTree]);
 
   weightsRef.current = weights;
 
@@ -390,15 +399,44 @@ function MapContent() {
         });
 
         mapInstance.on("mouseenter", "urban-grid-circles", () => {
-          mapInstance!.getCanvas().style.cursor = "pointer";
+          if (!isPlacingTreeRef.current)
+            mapInstance!.getCanvas().style.cursor = "pointer";
         });
         mapInstance.on("mouseleave", "urban-grid-circles", () => {
-          mapInstance!.getCanvas().style.cursor = "";
+          if (!isPlacingTreeRef.current)
+            mapInstance!.getCanvas().style.cursor = "";
         });
         mapInstance.on("click", "urban-grid-circles", (e) => {
+          if (isPlacingTreeRef.current) return;
           const f = e.features?.[0];
           const id = f?.properties?.id as string | undefined;
           if (id) setSelectedCellId(id);
+        });
+
+        // ── Tree placement click handler ──────────────────────────────────
+        mapInstance.on("click", (e) => {
+          if (!isPlacingTreeRef.current) return;
+          const { lng, lat } = e.lngLat;
+          import("mapbox-gl").then((mapboxgl) => {
+            const el = document.createElement("div");
+            el.innerHTML = "🌳";
+            el.style.fontSize = "28px";
+            el.style.cursor = "pointer";
+            el.style.filter = "drop-shadow(0 2px 6px rgba(0,0,0,0.6))";
+            el.style.userSelect = "none";
+            el.title = "Click to remove";
+            const marker = new mapboxgl.default.Marker({ element: el, anchor: "bottom" })
+              .setLngLat([lng, lat])
+              .addTo(mapInstance!);
+            treeMarkersRef.current.push(marker);
+            setTrees((prev) => [...prev, { lng, lat }]);
+            el.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              marker.remove();
+              treeMarkersRef.current = treeMarkersRef.current.filter((m) => m !== marker);
+              setTrees((prev) => prev.filter((t) => !(t.lng === lng && t.lat === lat)));
+            });
+          });
         });
 
         mapInstance.fitBounds(
@@ -433,6 +471,7 @@ function MapContent() {
 
     return () => {
       hotspotMarkers.current.forEach((m) => m.remove());
+      treeMarkersRef.current.forEach((m) => m.remove());
       markerRef.current?.remove();
       mapInstance?.remove();
       mapInstanceRef.current = null;
@@ -488,7 +527,6 @@ function MapContent() {
 
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh", overflow: "hidden" }}>
-      {/* Map */}
       <div ref={mapRef} className="map-container" />
 
       {/* ── Left sidebar ──────────────────────────────────────────────────── */}
@@ -537,6 +575,33 @@ function MapContent() {
           </svg>
         </button>
 
+        {/* Place tree toggle */}
+        <button
+          className={`sidebar-btn ${isPlacingTree ? "active" : ""}`}
+          onClick={() => setIsPlacingTree((v) => !v)}
+          title={isPlacingTree ? "Exit tree placement" : "Plant trees"}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>🌳</span>
+        </button>
+
+        {/* Clear all trees — only shown when trees exist */}
+        {trees.length > 0 && (
+          <button
+            className="sidebar-btn"
+            title={`Clear ${trees.length} tree${trees.length > 1 ? "s" : ""}`}
+            onClick={() => {
+              treeMarkersRef.current.forEach((m) => m.remove());
+              treeMarkersRef.current = [];
+              setTrees([]);
+            }}
+          >
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        )}
+
         <div className="sidebar-spacer" />
 
         <Link href="/" className="sidebar-btn" title="Home">
@@ -545,6 +610,26 @@ function MapContent() {
           </svg>
         </Link>
       </div>
+
+      {/* Tree placement indicator banner */}
+      {isPlacingTree && (
+        <div style={{
+          position: "absolute",
+          top: 16,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "rgba(34,197,94,0.15)",
+          border: "1px solid rgba(34,197,94,0.4)",
+          borderRadius: 8,
+          padding: "8px 18px",
+          fontSize: 13,
+          color: "#4ade80",
+          zIndex: 10,
+          pointerEvents: "none",
+        }}>
+          🌳 Click anywhere on the map to plant a tree · {trees.length} planted
+        </div>
+      )}
 
       {/* ── Communicate panel ─────────────────────────────────────────────── */}
       <div className={`communicate-panel ${activePanel === "communicate" ? "open" : ""}`}>
@@ -597,7 +682,7 @@ function MapContent() {
         </form>
       </div>
 
-      {/* ── Green priority panel — hidden when cost panel is open ─────────── */}
+      {/* ── Green priority panel ───────────────────────────────────────────── */}
       {activePanel !== "cost" && (
         <aside className="map-panel">
           <h2 className="map-panel-title">Green priority (API)</h2>
