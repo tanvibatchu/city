@@ -318,6 +318,141 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Right panel — data + sliders */
+.map-panel {
+  position: absolute;
+  top: 88px;
+  right: 16px;
+  bottom: 80px;
+  width: min(320px, calc(100vw - 32px));
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 16px;
+  background: rgba(10, 16, 10, 0.88);
+  border: 1px solid rgba(232, 220, 200, 0.12);
+  border-radius: 8px;
+  backdrop-filter: blur(18px);
+  overflow-y: auto;
+  font-family: var(--font-body);
+  pointer-events: auto;
+}
+
+.map-panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cream);
+  margin: 0;
+}
+
+.map-panel-hint {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(232, 220, 200, 0.45);
+  margin: 0;
+}
+
+.map-panel-muted {
+  font-size: 0.72rem;
+  color: rgba(232, 220, 200, 0.4);
+  margin: 0;
+}
+
+.map-panel-err {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  margin: 0;
+}
+
+.map-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: rgba(232, 220, 200, 0.75);
+}
+
+.map-slider-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--green-mid);
+}
+
+.map-panel-section {
+  padding-top: 8px;
+  border-top: 1px solid rgba(232, 220, 200, 0.08);
+}
+
+.map-panel-sub {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--cream-dim);
+  margin: 0 0 6px;
+}
+
+.map-top-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.72rem;
+  color: rgba(232, 220, 200, 0.7);
+}
+
+.map-top-btn {
+  background: rgba(232, 220, 200, 0.06);
+  border: 1px solid rgba(232, 220, 200, 0.12);
+  border-radius: 4px;
+  color: var(--cream);
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 2px 0;
+  text-align: left;
+  width: 100%;
+}
+
+.map-top-btn:hover {
+  border-color: var(--red-brick);
+}
+
+.map-top-btn.active {
+  border-color: var(--green-forest);
+  background: rgba(45, 90, 39, 0.25);
+}
+
+.map-predict-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--red-brick);
+  background: var(--red-brick);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.map-predict-btn:hover:not(:disabled) {
+  background: var(--red-warm);
+}
+
+.map-predict-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.map-predict-out {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: rgba(232, 220, 200, 0.85);
+}
+
+.map-delta {
+  color: #86efac;
+}
+
 /* ════════════════════════════════════════════════════════
    SIDEBAR
    ════════════════════════════════════════════════════════ */
